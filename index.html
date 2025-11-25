@@ -15,16 +15,67 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
 
 const App = () => {
-  // Phân loại nguyên âm và phụ âm
   const vowels = ['A', 'Ă', 'Â', 'E', 'Ê', 'I', 'O', 'Ô', 'Ơ', 'U', 'Ư', 'Y'];
   const consonants = ['B', 'C', 'D', 'Đ', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'X'];
   const alphabet = [...vowels, ...consonants].sort();
 
   const [letters, setLetters] = useState([]);
   const [playing, setPlaying] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const audioRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  // Tạo âm thanh chuông
+  useEffect(() => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const createBeep = () => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    };
+    
+    audioRef.current = createBeep;
+  }, []);
+
+  // Đếm ngược
+  useEffect(() => {
+    if (timerRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current);
+            setTimerRunning(false);
+            // Kêu chuông 3 lần
+            for (let i = 0; i < 3; i++) {
+              setTimeout(() => audioRef.current(), i * 600);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [timerRunning, timeLeft]);
 
   const getRandomFromArray = (arr) => {
     return arr[Math.floor(Math.random() * arr.length)];
@@ -33,38 +84,46 @@ const App = () => {
   const play = () => {
     let letter1, letter2;
     
-    // Random cách chọn: 
-    // 50% cơ hội: 1 phụ âm + 1 nguyên âm
-    // 50% cơ hội: 2 phụ âm
     const useOneVowel = Math.random() < 0.5;
     
     if (useOneVowel) {
-      // 1 phụ âm + 1 nguyên âm
       letter1 = getRandomFromArray(consonants);
       letter2 = getRandomFromArray(vowels);
-      
-      // Đảo ngẫu nhiên vị trí
       if (Math.random() < 0.5) {
         [letter1, letter2] = [letter2, letter1];
       }
     } else {
-      // 2 phụ âm
       letter1 = getRandomFromArray(consonants);
-      // Đảm bảo letter2 khác letter1
-      do {
-        letter2 = getRandomFromArray(consonants);
-      } while (letter2 === letter1);
+      letter2 = getRandomFromArray(consonants);
+      // Có thể trùng nhau
     }
     
     setLetters([letter1, letter2]);
     setPlaying(true);
   };
 
+  const startTimer = () => {
+    setTimeLeft(timerMinutes * 60);
+    setTimerRunning(true);
+  };
+
+  const stopTimer = () => {
+    setTimerRunning(false);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setTimeLeft(0);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const getLetterColor = (letter) => {
     if (vowels.includes(letter)) {
-      return 'from-red-400 to-red-600'; // Nguyên âm màu đỏ
+      return 'from-red-400 to-red-600';
     }
-    return 'from-blue-400 to-blue-600'; // Phụ âm màu xanh
+    return 'from-blue-400 to-blue-600';
   };
 
   return (
@@ -72,6 +131,64 @@ const App = () => {
       <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
         <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">🎮 Game Chữ Cái</h1>
         
+        {/* Đồng hồ đếm ngược */}
+        <div className="mb-8 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-6">
+          <h3 className="text-xl font-semibold text-center mb-4 text-gray-800">⏰ Đồng Hồ Đếm Ngược</h3>
+          
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <label className="text-gray-700 font-medium">Thời gian:</label>
+            <input 
+              type="number" 
+              min="1" 
+              max="60" 
+              value={timerMinutes}
+              onChange={(e) => setTimerMinutes(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
+              disabled={timerRunning}
+              className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg text-center font-bold text-lg focus:border-purple-500 focus:outline-none"
+            />
+            <span className="text-gray-700 font-medium">phút</span>
+          </div>
+
+          <div className={`text-6xl font-bold text-center mb-4 ${timeLeft <= 10 && timeLeft > 0 ? 'text-red-600 animate-pulse' : 'text-gray-800'}`}>
+            {timerRunning || timeLeft > 0 ? formatTime(timeLeft) : '--:--'}
+          </div>
+
+          <div className="flex gap-3 justify-center">
+            {!timerRunning && timeLeft === 0 && (
+              <button 
+                onClick={startTimer}
+                className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform"
+              >
+                ▶️ Bắt Đầu
+              </button>
+            )}
+            {timerRunning && (
+              <button 
+                onClick={stopTimer}
+                className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform"
+              >
+                ⏹️ Dừng
+              </button>
+            )}
+            {!timerRunning && timeLeft > 0 && (
+              <>
+                <button 
+                  onClick={startTimer}
+                  className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform"
+                >
+                  ▶️ Tiếp Tục
+                </button>
+                <button 
+                  onClick={stopTimer}
+                  className="bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 transition-transform"
+                >
+                  🔄 Reset
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-700 text-center">Bảng Chữ Cái (29 chữ)</h2>
           <div className="text-center mb-3 text-sm text-gray-600">
@@ -126,7 +243,8 @@ const App = () => {
         </div>
 
         <div className="mt-6 text-center text-gray-600 text-sm">
-          💡 Mỗi lần random sẽ có <strong>ít nhất 1 phụ âm</strong> trong 2 chữ
+          💡 Mỗi lần random sẽ có <strong>ít nhất 1 phụ âm</strong> trong 2 chữ<br/>
+          🔔 Đặt đồng hồ và bắt đầu chơi - sẽ có chuông báo khi hết giờ!
         </div>
       </div>
     </div>
