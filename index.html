@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Game Chữ">
@@ -11,6 +11,22 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        * {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        input {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -20,7 +36,6 @@ const { useState, useEffect, useRef } = React;
 const App = () => {
   const vowels = ['A', 'Ă', 'Â', 'E', 'Ê', 'I', 'O', 'Ô', 'Ơ', 'U', 'Ư', 'Y'];
   const consonants = ['B', 'C', 'D', 'Đ', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'X'];
-  const alphabet = [...vowels, ...consonants].sort();
 
   const [letters, setLetters] = useState([]);
   const [playing, setPlaying] = useState(false);
@@ -30,7 +45,6 @@ const App = () => {
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
 
-  // Tạo âm thanh chuông
   useEffect(() => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const createBeep = () => {
@@ -53,7 +67,6 @@ const App = () => {
     audioRef.current = createBeep;
   }, []);
 
-  // Đếm ngược
   useEffect(() => {
     if (timerRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -61,7 +74,6 @@ const App = () => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
             setTimerRunning(false);
-            // Kêu chuông 3 lần
             for (let i = 0; i < 3; i++) {
               setTimeout(() => audioRef.current(), i * 600);
             }
@@ -83,27 +95,20 @@ const App = () => {
 
   const play = () => {
     let letter1, letter2;
-    
-    // 33% cơ hội: 1 phụ âm + 1 nguyên âm
-    // 33% cơ hội: 2 phụ âm khác nhau
-    // 33% cơ hội: 2 phụ âm giống nhau
     const randomCase = Math.random();
     
     if (randomCase < 0.33) {
-      // 1 phụ âm + 1 nguyên âm
       letter1 = getRandomFromArray(consonants);
       letter2 = getRandomFromArray(vowels);
       if (Math.random() < 0.5) {
         [letter1, letter2] = [letter2, letter1];
       }
     } else if (randomCase < 0.66) {
-      // 2 phụ âm khác nhau
       letter1 = getRandomFromArray(consonants);
       do {
         letter2 = getRandomFromArray(consonants);
       } while (letter2 === letter1);
     } else {
-      // 2 phụ âm giống nhau
       letter1 = getRandomFromArray(consonants);
       letter2 = letter1;
     }
@@ -111,16 +116,15 @@ const App = () => {
     setLetters([letter1, letter2]);
     setPlaying(true);
     
-    // Tự động bắt đầu đồng hồ khi play
     if (!timerRunning && timeLeft === 0) {
-      setTimeLeft(timerMinutes * 60);
+      if (timeLeft === 0) {
+        setTimeLeft(timerMinutes * 60);
+      }
       setTimerRunning(true);
     }
   };
 
   const startTimer = () => {
-    // Nếu timeLeft = 0, bắt đầu mới
-    // Nếu timeLeft > 0, tiếp tục từ thời điểm pause
     if (timeLeft === 0) {
       setTimeLeft(timerMinutes * 60);
     }
@@ -130,7 +134,6 @@ const App = () => {
   const stopTimer = () => {
     setTimerRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    // Không reset timeLeft, chỉ pause
   };
 
   const formatTime = (seconds) => {
@@ -139,85 +142,75 @@ const App = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getLetterColor = (letter) => {
-    if (vowels.includes(letter)) {
-      return 'from-red-400 to-red-600';
-    }
-    return 'from-blue-400 to-blue-600';
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
-        <h1 className="text-4xl font-bold text-center mb-6 text-gray-800">🎮 Game Chữ Cái</h1>
-
-                
+      <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">🎮 Game Chữ Cái</h1>
+        
         {playing && (
-          <div className="mb-8 bg-gradient-to-r from-yellow-200 to-yellow-300 rounded-2xl p-8">
-            <h3 className="text-2xl font-semibold text-center mb-4 text-gray-800">Chữ Cái Random:</h3>
-            <div className="flex justify-center gap-8">
+          <div className="mb-6 bg-gradient-to-r from-yellow-200 to-yellow-300 rounded-2xl p-6">
+            <div className="flex justify-center gap-4">
               {letters.map((letter, i) => (
                 <div
                   key={i}
-                  className="bg-white text-6xl font-bold text-purple-600 rounded-2xl w-32 h-32 flex items-center justify-center shadow-xl animate-bounce"
-                  style={{ animationDelay: `${i * 0.1}s` }}
+                  className="bg-white text-7xl font-bold text-purple-600 rounded-2xl w-28 h-28 flex items-center justify-center shadow-xl"
                 >
                   {letter}
                 </div>
               ))}
             </div>
-            <div className="text-center mt-4 text-sm text-gray-700">
-              {letters.map((letter, i) => (
-                <span key={i} className="mx-2">
-                  <strong>{letter}</strong>: {vowels.includes(letter) ? '🔴 Nguyên âm' : '🔵 Phụ âm'}
-                </span>
-              ))}
-            </div>
           </div>
         )}
 
-        <div className="flex gap-4 justify-center flex-wrap">
-          <button onClick={play} className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-xl px-12 py-4 rounded-full shadow-lg hover:scale-105 transition-transform">
+        <div className="flex gap-3 justify-center mb-6">
+          <button 
+            onClick={play} 
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg active:scale-95 transition-transform"
+          >
             {playing ? '🔄 RANDOM LẠI' : '▶️ PLAY'}
           </button>
           {playing && (
-            <button onClick={() => setPlaying(false)} className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-xl px-10 py-4 rounded-full shadow-lg hover:scale-105 transition-transform">
+            <button 
+              onClick={() => setPlaying(false)} 
+              className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg active:scale-95 transition-transform"
+            >
               RESET
             </button>
           )}
         </div>
 
-        <div className="mt-6 text-center text-gray-600 text-sm">
+        <div className="text-center text-gray-600 text-sm mb-6 px-2">
           💡 Mỗi lần random sẽ có <strong>ít nhất 1 phụ âm</strong> trong 2 chữ<br/>
           🔔 Đặt đồng hồ và bắt đầu chơi - sẽ có chuông báo khi hết giờ!
         </div>
 
-        {/* Đồng hồ đếm ngược - Nhỏ gọn ở dưới */}
-        <div className="mt-6 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⏰</span>
-              <input 
-                type="number" 
-                min="1" 
-                max="60" 
-                value={timerMinutes}
-                onChange={(e) => setTimerMinutes(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
-                disabled={timerRunning}
-                className="w-16 px-2 py-1 border-2 border-gray-300 rounded-lg text-center font-bold focus:border-purple-500 focus:outline-none"
-              />
-              <span className="text-gray-700 font-medium">phút</span>
+        <div className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">⏰</span>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="60" 
+                  value={timerMinutes}
+                  onChange={(e) => setTimerMinutes(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
+                  disabled={timerRunning}
+                  className="w-14 px-2 py-1 border-2 border-gray-300 rounded-lg text-center font-bold focus:border-purple-500 focus:outline-none"
+                />
+                <span className="text-gray-700 font-medium text-sm">phút</span>
+              </div>
+
+              <div className={`text-4xl font-bold ${timeLeft <= 10 && timeLeft > 0 ? 'text-red-600 animate-pulse' : 'text-gray-800'}`}>
+                {timerRunning || timeLeft > 0 ? formatTime(timeLeft) : '--:--'}
+              </div>
             </div>
 
-            <div className={`text-3xl font-bold ${timeLeft <= 10 && timeLeft > 0 ? 'text-red-600 animate-pulse' : 'text-gray-800'}`}>
-              {timerRunning || timeLeft > 0 ? formatTime(timeLeft) : '--:--'}
-            </div>
-
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center">
               {!timerRunning && timeLeft === 0 && (
                 <button 
                   onClick={startTimer}
-                  className="bg-red-500 text-white font-bold px-6 py-2 rounded-full shadow hover:bg-red-600 transition-colors"
+                  className="bg-red-500 text-white font-bold px-8 py-3 rounded-full shadow active:scale-95 transition-transform text-base"
                 >
                   ⏹️ Dừng
                 </button>
@@ -225,7 +218,7 @@ const App = () => {
               {timerRunning && (
                 <button 
                   onClick={stopTimer}
-                  className="bg-yellow-500 text-white font-bold px-6 py-2 rounded-full shadow hover:bg-yellow-600 transition-colors"
+                  className="bg-yellow-500 text-white font-bold px-8 py-3 rounded-full shadow active:scale-95 transition-transform text-base"
                 >
                   ⏸️ Tạm dừng
                 </button>
@@ -234,13 +227,13 @@ const App = () => {
                 <>
                   <button 
                     onClick={startTimer}
-                    className="bg-green-500 text-white font-bold px-6 py-2 rounded-full shadow hover:bg-green-600 transition-colors"
+                    className="bg-green-500 text-white font-bold px-8 py-3 rounded-full shadow active:scale-95 transition-transform text-base"
                   >
                     ▶️ Tiếp tục
                   </button>
                   <button 
                     onClick={() => setTimeLeft(0)}
-                    className="bg-gray-500 text-white font-bold px-5 py-2 rounded-full shadow hover:bg-gray-600 transition-colors"
+                    className="bg-gray-500 text-white font-bold px-6 py-3 rounded-full shadow active:scale-95 transition-transform text-base"
                   >
                     🔄
                   </button>
